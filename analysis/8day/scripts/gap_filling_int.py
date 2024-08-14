@@ -9,72 +9,30 @@ app = typer.Typer()
 cdo = Cdo()
 cdoOpts='--reduce_dim -f nc -P 8'
 
-# def fill_clim_mean(data,ntimestepsyr):
-#     dimsize=data.shape
-#     outData = data.copy()
-#     nyears=int(dimsize[0]/ntimestepsyr)
-    
-#     for j in range(dimsize[1]):
-#         for i in range(dimsize[2]): 
-#             xm=np.isnan(data[:,j,i]).sum()
-#             upplim=0.3*dimsize[0]
-#             if xm>=upplim or not np.any(np.isnan(data[:,j,i])):
-#                 continue        
-#             reshaped_data = data[:,j,i].reshape((nyears, ntimestepsyr))
-#             clim_var = np.nanmean(reshaped_data, axis=0)
-#             for t in range(nyears):
-#                 tstart=t*ntimestepsyr
-#                 tend=(t+1)*ntimestepsyr
-#                 var=data[tstart:tend,j,i]
-#                 nanIdx=np.argwhere(np.isnan(var)).flatten() 
-#                 if not np.any(nanIdx):
-#                     # print("no nan value in this yr",tstart,tend)
-#                     continue      
-#                 var[nanIdx] = clim_var[nanIdx]
-#                 outData[tstart:tend,j,i] = var
-#     return outData
-
 def fill_clim_mean(data,data_clim,ntimestepsyr,nyears):
     dimsize=data.shape
+    outData = data.copy()
     for j in range(dimsize[1]):
         for i in range(dimsize[2]): 
-            xm=np.isnan(data[:,j,i]).sum()
-            upplim=int(0.4*dimsize[0])
-            if not np.any(np.isnan(data[:,j,i])):
+            if np.all(np.isnan(data[:,j,i])) or not np.any(np.isnan(data[:,j,i])):
                 continue   
-            elif xm>=upplim:
-                data[:,j,i] = np.nan
-                print(data[:,j,i],data[:,j,i].shape)
-                continue     
-            clim_var = data_clim[:,j,i]
-            for t in range(nyears):
-                tstart=t*ntimestepsyr
-                tend=(t+1)*ntimestepsyr
-                var=data[tstart:tend,j,i]
-                data[tstart:tend,j,i] = fill_year(var,clim_var)
-    return data
+            if np.any(np.isnan(data_clim[:,j,i])):
+                outData[:,j,i] = np.nan
+                continue
+            for t in range(dimsize[0]):
+                if not np.isnan(data[t,j,i]):
+                    continue
+                ict = t%ntimestepsyr
+                outData[t,j,i] = data_clim[ict,j,i]
+    return outData
 
-def fill_year(var,clim_var):
-    nanIdx=np.argwhere(np.isnan(var)).flatten() 
-    if not np.any(nanIdx):
-        return var
-    if nanIdx.size == 1:
-        idx=nanIdx[0]
-        var[idx] = clim_var[idx]
-    else:
-        var[nanIdx] = clim_var[nanIdx]
-
-    return var
-
-def fill_11ptavg(data,thresh):
+def fill_11ptavg(data):
     #data: 3d numpy array
     dimsize=data.shape
     outData = data.copy()
     for j in range(dimsize[1]):
         for i in range(dimsize[2]): 
-            xm=np.isnan(data[:,j,i]).sum()
-            upplim=thresh*dimsize[0]
-            if xm>=upplim or not np.any(np.isnan(data[:,j,i])):
+            if np.all(np.isnan(data[:,j,i])) or not np.any(np.isnan(data[:,j,i])):
                 continue 
             else:
                 for t in range(dimsize[0]):
@@ -98,7 +56,7 @@ def fill_11ptavg(data,thresh):
                     # print(outData[t,j,i])
     return outData
 
-def mask_data(data: xr.DataArray, thresh: float) -> xr.DataArray:
+def mask_data(data, thresh):
     """
     Masks values in a 3D xarray.DataArray where the number of missing values 
     along the 'time' dimension exceeds a specified threshold.
@@ -108,34 +66,35 @@ def mask_data(data: xr.DataArray, thresh: float) -> xr.DataArray:
     Returns:
     - xr.DataArray: Masked DataArray with values replaced by NaN where the condition is met.
     """
-    dimsize = data.sizes['time']
-    nan_count = data.isnull().sum(dim='time')
-    mask = nan_count > thresh * dimsize
-    masked_data = data.where(~mask, np.nan)
+    dimsize =data.shape[0]
+    nan_count = np.count_nonzero(np.isnan(data),0)
+    x = nan_count < thresh * dimsize
+    masked_data = data.copy() 
+    for i in range(dimsize):
+        masked_data[i,:,:] = np.where(x, data[i,:,:], np.nan)
     return masked_data
 
 @app.command()       
 def main(input:str,output:str):
-    chl=cdo.sellonlatbox('30,50,10,30', input=input, \
-        returnXArray='chlor_a')   
-    chl_clim=cdo.sellonlatbox('30,50,10,30', input="-ydaymean "+input, \
-        returnXArray='chlor_a')
+    lonlat='30,50,10,30'
+    chl=cdo.sellonlatbox(lonlat, input=input, returnXArray='chlor_a')   
+    chl_clim=cdo.sellonlatbox(lonlat, input="-ydaymean "+input, returnXArray='chlor_a')
     timesteps_in_yr=chl_clim.shape[0]
     tyears = int(chl.shape[0] / timesteps_in_yr)
     print(tyears,timesteps_in_yr)
-    thresh=0.4
-    maskedChl=mask_data(chl,thresh) 
-    filledChl = fill_11ptavg(maskedChl.values,thresh)
-    filledChl_2ndIter = fill_11ptavg(filledChl,thresh)
-    filledChl_3rdIter = fill_11ptavg(filledChl_2ndIter,thresh)
-    # print(type(filledChl_3rdIter))
-    gapfilled_data=fill_clim_mean(filledChl_3rdIter,chl_clim.values,timesteps_in_yr,tyears)
+    maskedChl=mask_data(chl.values,thresh=0.4) 
+    filledChl = maskedChl
+    for i in range(3):
+        print(i, "iter")
+        filledChl = fill_11ptavg(filledChl)
+    mask_chl_again = mask_data(filledChl,thresh=0.1)
+    gapfilled_data=fill_clim_mean(mask_chl_again,chl_clim.values,timesteps_in_yr,tyears)
+    print("gapfilled")
     ds = xr.DataArray(gapfilled_data, 
       coords={'time': chl.time, 'lat': chl.lat,'lon': chl.lon}, 
       dims=["time","lat","lon"],
       name="chlor_a")
     print(type(ds))
-    masked_ds = ds.where(~np.isnan(ds), np.nan)
     ds.to_netcdf(path=output,mode='w',format="NETCDF4")
     
 if __name__ == "__main__":
