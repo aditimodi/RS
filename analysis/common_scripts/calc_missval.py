@@ -23,11 +23,4 @@ def calc_miss_per(varname):
             per_miss[i,j]=(xm/X)*100
     return per_miss
 
-# def calc_miss_per(varname):
-#     dimsize = varname.shape
-#     X = dimsize[0]
-#     nan_count = varname.isnull().sum(dim='time')
-#     all_nan = varname.isnull().all(dim='time')
-#     per_miss = xr.full_like(nan_count, np.nan)
-#     per_miss = xr.where(~all_nan, (nan_count / X) * 100, per_miss)
-#     return per_miss.values.astype(float)
+

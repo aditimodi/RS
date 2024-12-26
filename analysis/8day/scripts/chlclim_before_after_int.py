@@ -29,31 +29,31 @@ ax1 = fig.add_subplot(1, 2, 1,projection=ccrs.PlateCarree())
 X, Y = np.meshgrid(CHL_orig.lon,CHL_orig.lat)
 cmap = plt.get_cmap('viridis')
 CHL1=ax1.contourf(X,Y,CHL_orig[0,:,:],cmap=cmap,levels=levels,extend='max',transform=ccrs.PlateCarree())
-# ax1.coastlines(color=None)
-# ax1.add_feature(cf.LAND,zorder=1, edgecolor='grey',facecolor=cf.COLORS['land_alt1'])
+ax1.coastlines(color=None)
+ax1.add_feature(cf.LAND,zorder=1, edgecolor='grey',facecolor='#E5E5E5')
 ax1.text(0.02, 0.95, '(a)', transform=ax1.transAxes, fontsize=14, 
          fontweight='bold', va='top', ha='left')
-# gl1 = ax1.gridlines(draw_labels=True)
-# gl1.top_labels = False
-# gl1.right_labels = False
+gl1 = ax1.gridlines(draw_labels=True)
+gl1.top_labels = False
+gl1.right_labels = False
 plt.title('mean chl-a: before gap-filling')
 
 ax2 = fig.add_subplot(1, 2, 2,projection=ccrs.PlateCarree())
 X, Y = np.meshgrid(CHL_orig.lon,CHL_orig.lat)
 cmap = plt.get_cmap('viridis')
 CHL2=ax2.contourf(X,Y,CHL_step1[0,:,:],cmap=cmap,levels=levels,extend='max',transform=ccrs.PlateCarree())
-# ax2.coastlines(color=None)
-# ax2.add_feature(cf.LAND,zorder=1, edgecolor='grey',facecolor=cf.COLORS['land_alt1'])
+ax2.coastlines(color=None)
+ax2.add_feature(cf.LAND,zorder=1, edgecolor='grey',facecolor='#E5E5E5')
 ax2.text(0.02, 0.95, '(b)', transform=ax2.transAxes, fontsize=14,
          fontweight='bold', va='top', ha='left')
-# gl2 = ax2.gridlines(draw_labels=True)
-# gl2.top_labels = False
-# gl2.right_labels = False
+gl2 = ax2.gridlines(draw_labels=True)
+gl2.top_labels = False
+gl2.right_labels = False
 plt.title('mean chl-a: after gap-filling')
-
 plt.subplots_adjust(wspace=0.2)
 
-cbar_ax = fig.add_axes([0.18, 0.2, 0.6, 0.025])
+cbar_ax = fig.add_axes([0.18, 0.1, 0.6, 0.03])
 fig.colorbar(CHL2, cax=cbar_ax, orientation="horizontal",label="chlorophyll conc. (mg/m$^3$)")
+plt.suptitle("chl spatial features are retained after gap-filling",x=0.3, y=0.92, weight='bold',fontsize='18')
 
 plt.savefig('../figures/chl_clim_after_int.png')

@@ -18,9 +18,9 @@ import copy
 import sys,os
 sys.path.append('/home/cccr/aditi/red_sea_phenology/analysis/common_scripts')
 from calc_missval import calc_miss_per
-mpl.rcParams.update({'font.size': 18})
 import sszpalette
 colorsmaps = sszpalette.register()
+plt.style.use('/home/cccr/aditi/AM_DataViz/style_sheets/styleSheetDoublecolumn.mplstyle')
 
 fname = os.path.splitext(os.path.basename(__file__))[0]
 # cmap=plt.get_cmap('sequential9ocker')
@@ -41,28 +41,19 @@ CHL_step1=cdo.sellonlatbox(lonlat, input="../data/chl_gap_filled_int_11pts.nc", 
 Per_data_miss_orig=calc_miss_per(CHL_orig.values)
 Per_data_miss_step1=calc_miss_per(CHL_step1.values)
 
-fig = plt.figure(figsize=(30,20))
-
+fig = plt.figure()
 # colormap_percentage = ['#fee391', '#fec44f', '#fe992a', '#ec7015', '#cc4c01','#993404','#672506','deeppink']
-colormap_percentage =hex_colors = [
-    "deeppink",
-    "#df9114",
-    "#9d6100",
-    "#452b00",
-    "#1a1000"
-]
-
+colormap_percentage = ["#fee391", "#df9114", "#9d6100", "#452b00","#1a1000"]
 cmap = ListedColormap(colormap_percentage)
 cmap.set_under(color='white')
-boundaries = [0.01, 10, 20, 30,40,90]  # Intervals as specified
+boundaries = [0.01, 10, 20, 30,40,99]  # Intervals as specified
 norm = BoundaryNorm(boundaries, cmap.N)
 
 ax1 = fig.add_subplot(1, 2, 1,projection=ccrs.PlateCarree())
 X, Y = np.meshgrid(CHL_orig.lon,CHL_orig.lat)
-
 CHL1=ax1.pcolormesh(X,Y,Per_data_miss_orig[:,:],cmap=cmap,norm=norm,transform=ccrs.PlateCarree())
 # ax1.coastlines(color=None)
-# ax1.add_feature(cf.LAND,zorder=1, edgecolor='#dddddd',facecolor='#dddddd')
+ax1.add_feature(cf.LAND,zorder=1, edgecolor='#dddddd',facecolor='#E5E5E5')
 gl2 = ax1.gridlines(draw_labels=True)
 gl2.top_labels = False
 gl2.right_labels = False
@@ -72,17 +63,19 @@ ax2 = fig.add_subplot(1, 2, 2,projection=ccrs.PlateCarree())
 X, Y = np.meshgrid(CHL_orig.lon,CHL_orig.lat)
 CHL2=ax2.pcolormesh(X,Y,Per_data_miss_step1,cmap=cmap,norm=norm,transform=ccrs.PlateCarree())
 # ax2.coastlines(color=None)
-# ax2.add_feature(cf.LAND,zorder=1, edgecolor='#dddddd',facecolor='#dddddd')
+ax2.add_feature(cf.LAND,zorder=1, edgecolor='#dddddd',facecolor='#E5E5E5')
 gl2 = ax2.gridlines(draw_labels=True)
 gl2.top_labels = False
 gl2.right_labels = False
 plt.title('Step I: After gap-filling')
 plt.subplots_adjust(wspace=0.15)
-cbar_ax = fig.add_axes([0.25, 0.15, 0.35, 0.025])
+cbar_ax = fig.add_axes([0.18, 0.1, 0.6, 0.03])
 cb=plt.colorbar(CHL2, cax=cbar_ax, orientation="horizontal",label="Percentage gaps in data (%)",drawedges=True)
 cb.set_ticks(boundaries)
 cb.outline.set_color('white')
 cb.outline.set_linewidth(2)
 cb.dividers.set_color('white')
 cb.dividers.set_linewidth(4)
+plt.suptitle("chl data has no gaps after gap-filling",x=0.3, y=0.92, weight='bold',fontsize='18')
+
 plt.savefig(f'../figures/{fname}.png')
